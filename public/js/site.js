@@ -12,4 +12,11 @@ const rows=$$('#contact .crow'),txt=(a,t)=>{a.querySelector('span:last-child').l
 if(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email||'')){rows[0].href='mailto:'+d.email;txt(rows[0],d.email)}
 if(https(d.instagram)){rows[1].href=d.instagram;try{txt(rows[1],'@'+new URL(d.instagram).pathname.split('/').filter(Boolean)[0])}catch(e){}}
 if(https(d.facebook))rows[2].href=d.facebook;
+
+const B=`https://firestore.googleapis.com/v1/projects/${c.projectId}/databases/(default)/documents/site/`;
+const get=async id=>{try{const j=await(await fetch(B+encodeURIComponent(id)+'?key='+c.apiKey)).json(),v=j.fields&&j.fields.data&&j.fields.data.stringValue;return v&&/^data:(image\/(jpeg|png|webp)|application\/pdf);base64,/.test(v)?v:null}catch(e){return null}};
+const put=async(sel,id)=>{const e=$(sel);if(e&&id){const u=await get(id);if(u)e.src=u}};
+await Promise.all([put('.hero img.portrait',d.heroPhoto),put('#about img.portrait',d.aboutPhoto),put('.logo img',d.logo)]);
+if(Array.isArray(d.gallery)&&d.gallery.length){const it=await Promise.all(d.gallery.map(async g=>{const s=g.id?await get(g.id):(/^img\/[\w.-]+$/.test(g.src||'')?g.src:null);if(!s)return null;const i=document.createElement('img');i.src=s;i.width=i.height=640;i.alt=g.alt||'';i.loading='lazy';return i}));$('.gal').replaceChildren(...it.filter(Boolean))}
+if(d.cv){const u=await get(d.cv);if(u){const url=URL.createObjectURL(await(await fetch(u)).blob());$$('a.btn[href$="TAREK-CV.pdf"]').forEach(a=>{a.href=url;a.download='TAREK-CV.pdf'})}}
 }catch(e){}})();

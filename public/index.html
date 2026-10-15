@@ -89,6 +89,7 @@ footer{background:var(--dark);color:#cfcfd4;padding:34px 0;font-size:14px}footer
 .hero p{font-size:clamp(11px,calc(11px + 5*(100vw - 320px)/780),16px)}
 .hero .btns{gap:clamp(5px,calc(5px + 7*(100vw - 320px)/780),12px);margin-top:clamp(12px,calc(12px + 12*(100vw - 320px)/780),24px)}
 .hero .btn{font-size:clamp(9px,calc(9px + 5*(100vw - 320px)/780),14px);padding:clamp(6px,calc(6px + 4*(100vw - 320px)/780),10px) clamp(4px,calc(4px + 20*(100vw - 320px)/780),24px);min-height:clamp(40px,calc(40px + 4*(100vw - 320px)/780),44px);white-space:nowrap}
+@media(max-width:820px){.hero img.portrait{align-self:stretch;aspect-ratio:auto}}
 </style>
 </head>
 <body>
@@ -151,9 +152,10 @@ footer{background:var(--dark);color:#cfcfd4;padding:34px 0;font-size:14px}footer
 <a class="crow" href="https://instagram.com/delower_hossain_tarek?dlrf=MXNlZDdyNzhqOGhzdQ%3D%3D" target="_blank" rel="noopener noreferrer"><span class="cic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></span><span><small>Instagram</small>@delower_hossain_tarek</span></a>
 <a class="crow" href="https://www.facebook.com/share/19pvc8eYC8/" target="_blank" rel="noopener noreferrer"><span class="cic" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 22v-8.2h2.8l.5-3.3h-3.3V8.4c0-.95.5-1.7 1.9-1.7h1.5V3.8c-.3 0-1.3-.2-2.5-.2-2.6 0-4.3 1.6-4.3 4.4v2.5H7.2v3.3H10V22z"/></svg></span><span><small>Facebook</small>Visit on Facebook</span></a>
 </div></div>
-<form id="cf"><div><label for="n">Your name</label><input id="n" required></div>
-<div><label for="e">Your email</label><input id="e" type="email" required></div>
-<div><label for="m">Message</label><textarea id="m" rows="5" required></textarea></div>
+<form id="cf" name="contact" method="POST" action="/" data-netlify="true" netlify-honeypot="bot-field"><input type="hidden" name="form-name" value="contact"><p hidden><label>Leave this empty: <input name="bot-field" tabindex="-1" autocomplete="off"></label></p>
+<div><label for="n">Your name</label><input id="n" name="name" autocomplete="name" maxlength="100" required></div>
+<div><label for="e">Your email</label><input id="e" name="email" type="email" autocomplete="email" maxlength="150" required></div>
+<div><label for="m">Message</label><textarea id="m" name="message" rows="5" maxlength="3000" required></textarea></div>
 <button class="btn" type="submit">Send message</button><p id="st" role="status" style="margin:0;font-size:14px"></p></form>
 </div></section>
 </main>
@@ -167,7 +169,7 @@ b.onclick=function(){setMenu(!n.classList.contains('open'))};
 n.onclick=function(e){if(e.target.tagName=='A'){setMenu(false)}};
 document.onkeydown=function(e){if(e.key=='Escape'&&n.classList.contains('open')){setMenu(false);b.focus()}};
 window.onresize=function(){if(window.innerWidth>720){setMenu(false)}};
-document.getElementById('cf').onsubmit=function(e){e.preventDefault();document.getElementById('st').textContent='Prototype only: this form will send real emails once the website is deployed.'};
+document.getElementById('cf').onsubmit=async function(e){e.preventDefault();var f=e.target,b=f.querySelector('button'),s=document.getElementById('st');b.disabled=true;s.textContent='Sending...';try{var r=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(f)).toString()});if(!r.ok)throw 0;f.reset();s.textContent='Thank you! Your message has been sent. I will reply as soon as I can.'}catch(x){s.textContent='Sorry, the message could not be sent. Please email me directly at '+document.querySelector('#contact .crow').getAttribute('href').replace('mailto:','')+'.'}b.disabled=false};
 </script>
 <script type="module" src="js/site.js"></script>
 </body>

@@ -8,7 +8,7 @@ button{background:#c8102e;color:#fff;border:0;padding:12px 22px;font:600 15px sy
 <label for="u">Username</label><input id="u" autocomplete="username" required><label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
 <p id="e" class="err" role="alert"></p><button style="width:100%">Log in</button></form></main>
 <script type="module">import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';import {getAuth,setPersistence,browserSessionPersistence,signInWithEmailAndPassword,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';import {firebaseConfig,USERNAMES} from '../js/firebase-config.js';
-const auth=getAuth(initializeApp(firebaseConfig)),$=i=>document.getElementById(i),go=()=>location.replace('/admin/dashboard');
+const auth=getAuth(initializeApp(firebaseConfig)),$=i=>document.getElementById(i),go=()=>location.replace('/admin/dashboard.html');
 const m=new URLSearchParams(location.search).get('m');if(m)$('e').textContent=m=='idle'?'You were signed out after 30 minutes of inactivity.':'This account is not authorised.';
 onAuthStateChanged(auth,u=>{if(u&&!m)go()});
 $('f').onsubmit=async ev=>{ev.preventDefault();$('e').textContent='';const email=USERNAMES[$('u').value.trim().toLowerCase()];

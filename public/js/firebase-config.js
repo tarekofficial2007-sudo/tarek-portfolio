@@ -1,18 +1,5 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyDdQjPbMXIQNzpmelvA2JfMDCUyw5iib5w",
-  authDomain: "tarek-chef.firebaseapp.com",
-  databaseURL: "https://tarek-chef-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "tarek-chef",
-  storageBucket: "tarek-chef.firebasestorage.app",
-  messagingSenderId: "1005599998835",
-  appId: "1:1005599998835:web:a1d9ae3826b999bc987b06"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Firebase web config. These values are public identifiers (not secrets); your data is protected by the security rules.
+// Paste the values from Firebase Console > Project settings > Your apps > Web app.
+export const firebaseConfig={apiKey:"AIzaSyDdQjPbMXIQNzpmelvA2JfMDCUyw5iib5w",authDomain:"tarek-chef.firebaseapp.com",projectId:"tarek-chef",storageBucket:"tarek-chef.firebasestorage.app",messagingSenderId:"1005599998835",appId:"1:1005599998835:web:81eea758a22c3ff8987b06"};
+// Login username -> account email. The password is NEVER stored here; Firebase checks it on its servers.
+export const USERNAMES={tarek:"tarekofficial2007@gmail.com"};

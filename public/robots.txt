@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://tarek-chef.netlify.app/sitemap.xml

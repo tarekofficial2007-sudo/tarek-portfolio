@@ -1,57 +1,190 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Admin dashboard</title><style>*{box-sizing:border-box}body{margin:0;background:#141416;color:#f3f3f4;font:16px/1.6 system-ui,Segoe UI,Arial,sans-serif}a{color:#ff6b81}
-.card{background:#1d1d20;border:1px solid #34343a;border-top:4px solid #c8102e;padding:22px;margin:0 auto 18px;max-width:760px}h1,h2{margin:0 0 12px}h2{font-size:20px}
-label{display:block;font-size:14px;color:#c9c9d0;margin:12px 0 4px}input,textarea,select{width:100%;padding:11px;background:#141416;color:#fff;border:1px solid #4a4a52;font:inherit}
-input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid #c8102e;outline-offset:1px}
-button{background:#c8102e;color:#fff;border:0;padding:12px 22px;font:600 15px system-ui;cursor:pointer;min-height:44px}button.ghost{background:transparent;border:2px solid #c8102e}
-.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;max-width:760px;margin:0 auto;padding:16px 20px}.err{color:#ff8a9a;min-height:24px;margin:10px 0 0}.ok{color:#7ddc9a}
-.row{border:1px solid #34343a;padding:14px;margin:12px 0}.row .r{display:grid;grid-template-columns:140px 1fr;gap:10px}@media(max-width:560px){.row .r{grid-template-columns:1fr}.card{margin-left:12px;margin-right:12px}}</style></head><body><div id="app" hidden><div class="bar"><h1 style="margin:0;font-size:22px">Dashboard</h1><span><a href="/" target="_blank" rel="noopener">View site</a> &nbsp; <button id="out" class="ghost">Log out</button></span></div>
-<section class="card"><h2>About Me</h2><label for="aboutHeadline">Headline</label><input id="aboutHeadline" maxlength="120"><label for="aboutText">About text</label><textarea id="aboutText" rows="5" maxlength="1200"></textarea><label for="goals">Professional goals</label><textarea id="goals" rows="3" maxlength="500"></textarea></section>
-<section class="card"><h2>Culinary Skills</h2><div id="sk"></div><button id="add" class="ghost" type="button">+ Add skill</button></section>
-<section class="card"><h2>Contact</h2><label for="email">Email</label><input id="email" type="email"><label for="instagram">Instagram link</label><input id="instagram" type="url" placeholder="https://"><label for="facebook">Facebook link</label><input id="facebook" type="url" placeholder="https://"></section>
-<style>.media{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}.media img,.g img{display:block;max-width:100%;background:#1c1c1e;margin:6px 0}.media img{max-height:170px}.g{display:grid;grid-template-columns:90px 1fr;gap:12px;align-items:center;border:1px solid #34343a;padding:10px;margin:10px 0}.g img{width:90px;height:90px;object-fit:cover;margin:0}.g .b{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.g button{padding:6px 12px;min-height:36px}input[type=file]{padding:8px}</style>
-<section class="card"><h2>Photos and logo</h2><p style="color:#a9a9b0;font-size:14px;margin:0">Choose a file and it is saved straight away. Photos are shrunk automatically. The logo should be a PNG with a see-through background.</p><div class="media">
-<div><label>Hero photo</label><img id="p_heroPhoto" alt=""><input type="file" accept="image/*" data-up="heroPhoto"></div>
-<div><label>About photo</label><img id="p_aboutPhoto" alt=""><input type="file" accept="image/*" data-up="aboutPhoto"></div>
-<div><label>Logo</label><img id="p_logo" alt=""><input type="file" accept="image/png,image/webp,image/jpeg" data-up="logo"></div></div></section>
-<section class="card"><h2>Gallery</h2><div id="gal"></div><label for="galAdd">Add photos</label><input type="file" id="galAdd" accept="image/*" multiple></section>
-<section class="card"><h2>CV (PDF)</h2><p id="cvst" style="margin:0 0 8px"></p><input type="file" id="cvIn" accept="application/pdf"><p style="color:#a9a9b0;font-size:14px">Maximum about 650 KB.</p></section>
-<p id="mst" role="status" class="card" style="padding:12px 22px"></p>
-<section class="card"><button id="save">Save changes</button> <span id="st" role="status"></span><p style="color:#a9a9b0;font-size:14px"></p></section></div>
-<script type="module">import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';import {getAuth,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';import {getFirestore,doc,getDoc,setDoc,deleteDoc,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import {firebaseConfig} from '../js/firebase-config.js';import {DEFAULTS} from '../js/defaults.js';import {ICONS} from '../js/icons.js';
-const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),$=i=>document.getElementById(i),F=['aboutHeadline','aboutText','goals','email','instagram','facebook'];let skills=[];
-const out=async m=>{try{await signOut(auth)}catch(e){}location.replace('/admin'+(m?'?m='+m:''))};
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-function draw(){$('sk').innerHTML=skills.map((s,i)=>`<div class="row" data-i="${i}"><div class="r"><div><label>Icon</label><select data-k="icon">${Object.keys(ICONS).map(k=>`<option ${k==s.icon?'selected':''}>${k}</option>`).join('')}</select></div><div><label>Title</label><input data-k="title" maxlength="60" value="${esc(s.title)}"></div></div><label>Description</label><textarea data-k="text" rows="2" maxlength="220">${esc(s.text)}</textarea><button type="button" class="ghost" data-del="${i}" style="margin-top:10px">Delete</button></div>`).join('')}
-$('sk').oninput=e=>{const r=e.target.closest('.row');if(r&&e.target.dataset.k)skills[r.dataset.i][e.target.dataset.k]=e.target.value};
-$('sk').onclick=e=>{if(e.target.dataset.del!==undefined&&confirm('Delete this skill?')){skills.splice(+e.target.dataset.del,1);draw()}};
-$('add').onclick=()=>{skills.push({icon:'star' in ICONS?'star':'leaf',title:'',text:''});draw()};
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><title>Admin</title>
+<style>
+*{box-sizing:border-box}:root{--g1:#1e240c;--g2:#4a5f29;--g3:#567520;--cr:#e2e4d4;--bg:#e8e8e8;--cd:#eee;--ln:#ddd;--k:#000;--or:#f96301;--mu:#555454}
+body{margin:0;background:var(--bg);color:var(--k);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+#app{max-width:520px;margin:0 auto;min-height:100vh;padding-bottom:104px}
+button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;border:0;background:none;min-height:44px}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--or);outline-offset:2px}
+section[data-v]{display:none}section[data-v].on{display:block}
+.cv{position:relative;min-height:250px;padding:calc(16px + env(safe-area-inset-top)) 16px 52px;color:#fff;background:linear-gradient(155deg,var(--g1),var(--g2) 50%,var(--g3)) center/cover}
+.cv .tp{display:flex;justify-content:space-between}.ib{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none}
+.ib svg,.rb svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+.cv h1{font-size:44px;line-height:.98;font-weight:500;letter-spacing:-2px;margin:26px 0 0}.cv h1 em{font-style:normal;color:rgba(255,255,255,.55)}
+.st{display:grid;grid-template-columns:1.25fr 1fr;margin-top:-40px;position:relative}
+.m1{background:var(--cr);padding:14px;border-radius:0 22px 0 0}.m1 b{font-size:15px;font-weight:500;display:block}
+.dash{display:flex;gap:4px;margin:10px 0 12px}.dash span{height:3px;flex:1;background:#c3c6b0}.dash .f{background:var(--g2)}
+.pb{display:inline-flex;align-items:center;gap:8px;background:var(--or);color:#fff;border-radius:99px;padding:0 6px 0 16px;min-height:40px;font-weight:600}
+.pb i{width:30px;height:30px;border-radius:50%;background:#fff;color:var(--or);display:flex;align-items:center;justify-content:center;font-style:normal}
+.lk{display:block;font-size:13px;text-decoration:underline;padding:10px 0 0;min-height:0;text-align:left}
+.m2{background:var(--k);color:#fff;padding:14px;border-radius:22px 0 0 0;cursor:pointer}.m2 .n{font-size:40px;font-weight:500;letter-spacing:-2px;line-height:1}.m2 b{display:block;font-weight:500;font-size:13px;margin-top:6px}.m2 span{font-size:11px;color:#a9a9a8}
+.pad{padding:16px 14px}h2{font-size:21px;font-weight:500;letter-spacing:-.5px;margin:0 0 12px}
+.cd{display:flex;align-items:center;justify-content:space-between;width:100%;text-align:left;background:var(--cd);border:1px solid var(--ln);border-radius:18px;padding:10px 16px;margin-bottom:8px;box-shadow:inset 0 0 0 3px var(--bg)}
+.cd small{display:block;font-size:12px;color:var(--mu)}.cd b{font-size:15px;font-weight:600}.cd .n{font-size:32px;font-weight:500;letter-spacing:-1.5px}
+.cd.a{background:var(--k);color:#fff;border-color:var(--k);box-shadow:none}.cd.a small{color:#a9a9a8}
+.tg{font-size:10px;background:var(--or);color:#fff;border-radius:99px;padding:2px 8px;margin-left:6px;font-weight:600}
+.bk{display:inline-flex;align-items:center;gap:6px;padding:0 4px;font-weight:600;margin-bottom:6px}
+label{display:block;font-weight:600;margin:14px 0 2px}.hp{font-size:13px;color:var(--mu);margin:0 0 6px}
+input,textarea,select{width:100%;padding:12px;background:#fff;border:1px solid #cfcfcf;border-radius:12px}textarea{resize:vertical}
+.bt{display:inline-flex;align-items:center;justify-content:center;background:#fff;border:1px solid #cfcfcf;border-radius:99px;padding:0 16px;min-height:44px;font-weight:600}.bt.r{background:var(--or);border-color:var(--or);color:#fff}.bt.k{background:var(--k);border-color:var(--k);color:#fff}
+.row{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:12px;margin-bottom:10px}.row .x{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.ph{width:100%;max-height:200px;object-fit:cover;border-radius:12px;background:#ccc;margin:6px 0}.gi{display:flex;gap:10px}.gi img{width:84px;height:84px;object-fit:cover;border-radius:12px;flex:none}.gi>div{flex:1;min-width:0}
+.ms{background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:12px;margin-bottom:8px;width:100%;text-align:left;display:block}.ms b{font-size:15px}.ms span{float:right;font-size:12px;color:var(--mu)}.ms p{margin:4px 0 0;color:#333;overflow-wrap:anywhere}.ms.u{border-left:5px solid var(--or)}
+.dt{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--or);margin-right:6px}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:5;max-width:520px;margin:0 auto;display:flex;justify-content:space-around;background:var(--bg);padding:8px 8px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--ln)}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mu);min-height:0}nav .rb{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid var(--ln);display:flex;align-items:center;justify-content:center;position:relative}
+nav .on{color:var(--k);font-weight:700}nav .on .rb{background:var(--k);color:#fff;border-color:var(--k)}nav .rb i{position:absolute;top:-3px;right:-3px;background:var(--or);color:#fff;font-size:10px;font-style:normal;border-radius:99px;padding:0 5px;line-height:15px}
+#db{position:fixed;left:10px;right:10px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:6;max-width:500px;margin:0 auto;background:var(--k);color:#fff;border-radius:18px;padding:8px 8px 8px 16px;display:none;align-items:center;gap:8px}#db.on{display:flex}#db span{flex:1;font-size:13px}#db .bt{min-height:40px}#db .bt:not(.r){color:#000}#pvw .bt{white-space:nowrap}
+#sh{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9;display:none;align-items:flex-end}#sh.on{display:flex}#sh>div{background:#fff;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:520px;margin:0 auto}#sh h3{margin:0 0 6px;font-size:20px}#sh p{margin:0 0 14px;color:var(--mu)}#sh .x{display:flex;gap:8px}#sh .bt{flex:1}
+#tt{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));z-index:10;background:#2e9e5b;color:#fff;padding:10px 18px;border-radius:99px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s}#tt.on{opacity:1}#tt.e{background:#c8102e}
 
+@media (min-width:960px){
+#app{max-width:none;padding:0 24px 40px 116px}
+nav{left:20px;right:auto;top:20px;bottom:20px;width:84px;max-width:none;margin:0;flex-direction:column;justify-content:flex-start;gap:18px;padding:22px 6px;border:1px solid var(--ln);border-radius:30px;background:#f4f4f4}
+nav button{flex:none}
+section[data-v]{max-width:1120px;margin-left:auto;margin-right:auto}
+section[data-v=sec],section[data-v=msg],section[data-v=his],section[data-v=edit]{max-width:760px}
+section[data-v=home]{padding-top:20px}
+.cv{border-radius:30px;min-height:320px;padding:28px 32px 64px}
+.cv h1{font-size:76px;letter-spacing:-3.5px;margin-top:40px}
+.st{margin:-44px 20px 0;grid-template-columns:1.7fr 1fr}
+.m1,.m2{padding:20px 24px}.m2 .n{font-size:56px}
+.pad{padding:28px 6px}
+section[data-v=home] #hl,section[data-v=edit] #el{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+section[data-v=edit]{max-width:1120px}
+section[data-v=home] .cd,section[data-v=edit] .cd{margin:0;padding:16px 20px;min-height:96px}
+.cd .n{font-size:44px}
+#db{left:116px;right:24px;max-width:620px;bottom:24px}.m1{border-radius:0 28px 0 28px}.m2{border-radius:28px 0 28px 0}#app{padding-bottom:120px}
+#sh>div{border-radius:22px;max-width:460px;margin:auto}#sh{align-items:center}
+}
+
+[hidden]{display:none!important}
+#app{max-width:none!important;padding:0!important;margin:0!important;background:#f1efed;min-height:100vh;--or:#fd5100;--c:#2f6fdf}
+.nav{position:sticky;top:0;z-index:8;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;flex-wrap:wrap;border-bottom:1px solid #eee}
+.br{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;letter-spacing:.6px;order:1}.br small{display:block;font-size:8px;letter-spacing:3px;color:#888;font-weight:500}
+.lg{width:38px;height:38px;border-radius:50%;background:#c00720;display:flex;align-items:center;justify-content:center}.lg svg{width:22px}
+.mn{order:2;flex:1;display:flex;gap:4px;justify-content:center;overflow-x:auto}
+.mn button{position:relative;font-size:14px;color:#777;padding:10px 12px;border-bottom:2px solid transparent;white-space:nowrap;background:none;min-height:44px}
+.mn button:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--m);margin-right:7px;vertical-align:middle}
+.mn button.on{color:#111;font-weight:700;border-bottom-color:var(--m)}
+.mn button.chg:after{content:"";position:absolute;top:8px;right:2px;width:7px;height:7px;border-radius:50%;background:var(--or)}
+.mn i{background:var(--or);color:#fff;font-style:normal;font-size:10px;border-radius:99px;padding:0 6px;line-height:16px;margin-left:5px}
+.rt{order:3;display:flex;align-items:center;gap:8px}
+.dp{font-size:12px;background:#fff0e8;color:#b53d00;border-radius:99px;padding:6px 12px;font-weight:700;white-space:nowrap}.dp.ok{background:#e8f6ec;color:#1f7a3a}
+.ic{width:38px;height:38px;border-radius:50%;border:1px solid #ddd;background:#fff;display:flex;align-items:center;justify-content:center;color:#444}.ic svg{width:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+.ob{background:var(--or);color:#fff;font-weight:700;font-size:13px;padding:0 20px;min-height:44px;border-radius:9px;border:1px solid var(--or);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(253,81,0,.25)}
+.ob.l{background:transparent;color:#fff;border-color:#777;box-shadow:none}.ob.off{opacity:.45;box-shadow:none}
+.hero{position:relative;background:#0a0a0a;color:#fff;min-height:340px;overflow:hidden}
+.hl{position:relative;z-index:2;padding:56px 0 46px 56px;max-width:560px}
+.hl small{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--c)}
+.hl h1{font-size:46px;line-height:1.12;font-weight:800;margin:12px 0 14px;letter-spacing:-1px;color:#fff}
+.hl p{font-size:15px;color:#bdbdbd;line-height:1.7;margin:0 0 26px;max-width:420px}.hb{display:flex;gap:12px}
+.pl{position:absolute;right:-90px;top:-6px;width:440px;height:440px;object-fit:contain;filter:drop-shadow(0 30px 40px rgba(0,0,0,.8));z-index:1}
+.pl.wide{width:540px;height:auto;right:-110px;top:36px}
+.bdy{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;padding:22px 24px 40px;max-width:1240px;margin:0 auto;align-items:start}
+.bdy[hidden]{display:none}.bdy.one{grid-template-columns:minmax(0,760px);justify-content:center}
+.fc{background:#fff;border-radius:16px;padding:20px;border:1px solid #e6e2de;border-top:4px solid var(--c)}
+.fc h2{font-size:18px;margin:0 0 4px}.fc h3.sub{margin:22px 0 8px;font-size:15px}
+.fc label{display:block;font-weight:700;font-size:13px;margin:14px 0 2px}
+.fc input,.fc textarea,.fc select{width:100%;border:1px solid #ddd;border-radius:10px;padding:11px;font:inherit;font-size:14px;background:#fff;min-height:44px}
+.fc .hp{font-size:12px;color:#8a8581;margin:0 0 5px}
+.pvc{background:#fff;border:1px solid #e3dfdb;border-radius:14px;overflow:hidden;box-shadow:0 8px 22px rgba(0,0,0,.07);position:sticky;top:76px}
+.pvb{display:flex;align-items:center;gap:5px;background:#efedeb;padding:9px 12px}.pvb i{width:9px;height:9px;border-radius:50%;background:#d3cfcb}.pvb span{flex:1;margin-left:6px;font-size:11px;color:#777;background:#fff;border-radius:99px;padding:4px 12px;overflow:hidden;white-space:nowrap}
+.pvc iframe{display:block;width:100%;height:560px;border:0;background:#fff}
+@media(max-width:700px){
+.nav{padding:10px 14px;gap:8px}.lg{width:34px;height:34px}.mn{order:4;flex-basis:100%;justify-content:flex-start}.rt{margin-left:auto}.dp{display:none}.ic{width:36px;height:36px}.ob{padding:0 14px;font-size:12px}
+.hero{min-height:270px}.hl{padding:32px 0 26px 18px;max-width:190px}.hl h1{font-size:24px;margin:8px 0 10px}.hl p{font-size:11.5px;margin-bottom:16px;line-height:1.55}.hb{flex-wrap:wrap;gap:8px}
+.pl{width:250px;height:250px;right:-105px;top:30px}.pl.wide{width:300px;right:-130px;top:60px}
+.bdy,.bdy.one{grid-template-columns:minmax(0,1fr);padding:14px}.pvc{position:static}.pvc iframe{height:440px}}
+</style></head><body>
+<div id="app" hidden>
+<header class="nav"><div class="br"><div class="lg"><svg viewBox="0 0 100 100"><g fill="#fff"><circle cx="35" cy="40" r="13"/><circle cx="50" cy="33" r="16"/><circle cx="65" cy="40" r="13"/><rect x="30" y="40" width="40" height="28"/><rect x="30" y="66" width="40" height="12" rx="3"/></g></svg></div><div>TAREK<small>ADMIN</small></div></div>
+<div class="mn" id="mn" role="group" aria-label="Sections"></div>
+<div class="rt"><span class="dp" id="dp"></span><button class="ic" id="hb" aria-label="History"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></button><a class="ic" href="/" target="_blank" rel="noopener" aria-label="Website dekhun"><svg viewBox="0 0 24 24"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/></svg></a><button class="ic" id="out" aria-label="Log out"><svg viewBox="0 0 24 24"><path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9"/></svg></button><button class="ob" id="pbtn">Publish</button></div></header>
+<section class="hero" id="hero"><div class="hl"><small id="hk"></small><h1 id="ht"></h1><p id="hpp"></p><div class="hb"><button class="ob" id="hp1">Preview</button><button class="ob l" id="hd">Discard</button></div></div><img class="pl" id="pl" alt=""></section>
+<main class="bdy" id="bd"><div class="fc" id="se"></div><div class="pvc"><div class="pvb"><i></i><i></i><i></i><span id="pu"></span></div><iframe id="pif" title="Website preview"></iframe></div></main>
+<main class="bdy one" id="hv" hidden><div class="fc"><h2>Puraton version</h2><p class="hp">Publish korar proti-bar ager live version jomano thake. Bhul hole fire jete paren.</p><div id="hs"></div></div></main>
+<div id="sh"><div><h3 id="sht"></h3><p id="shp"></p><div class="x"><button class="bt" id="sn">Na</button><button class="bt r" id="sy">Haa</button></div></div></div><div id="tt" role="status"></div></div>
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';import {getAuth,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';import {getFirestore,doc,getDoc,setDoc,deleteDoc,getDocs,collection,serverTimestamp} from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import {firebaseConfig} from '../js/firebase-config.js';import {DEFAULTS} from '../js/defaults.js';import {ICONS} from '../js/icons.js';import {makeAdmin} from '../js/admin-data.js';
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),$=i=>document.getElementById(i),P=p=>doc(db,...p.split('/'));
+const A=makeAdmin({get:async p=>{const s=await getDoc(P(p));return s.exists()?s.data():null},set:(p,d)=>setDoc(P(p),d),del:p=>deleteDoc(P(p)),list:async c=>(await getDocs(collection(db,c))).docs.map(x=>({id:x.id,...x.data()}))});
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const ALTS=['Fish in a rich red sauce topped with fresh chilli, spring onion and herbs','Baked creamy pasta topped with crisp potato chips and fresh basil','Penne pasta in tomato sauce with fresh basil and parmesan','Noodle soup with grilled stuffed chicken, carrot, cucumber and sesame','Seafood rice with squid, prawns, vegetables and parsley','Crumbed chicken cutlets with fried rice and stir-fried vegetables'];
-let C={},imgs={};const st=(m,ok)=>{const e=$('mst');e.textContent=m;e.className='card'+(ok?' ok':'');e.style.padding='12px 22px'};
-const emsg=e=>e&&e.code=='permission-denied'?'Not allowed: you are not the admin.':(e&&e.message)||'Something went wrong.';
-const mkid=p=>p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),saveC=x=>setDoc(doc(db,'site','content'),x,{merge:true}),drop=id=>{if(id)deleteDoc(doc(db,'site',id)).catch(()=>{})};
-async function putImg(url){const id=mkid('img');await setDoc(doc(db,'site',id),{data:url,at:serverTimestamp()});imgs[id]=url;return id}
-async function loadImg(id){if(!id||imgs[id])return;try{const x=await getDoc(doc(db,'site',id));if(x.exists())imgs[id]=x.data().data}catch(e){}}
-function shrink(f,max,type,q){return new Promise((ok,no)=>{const im=new Image(),u=URL.createObjectURL(f);im.onerror=()=>no(new Error('That file is not a valid image.'));im.onload=()=>{URL.revokeObjectURL(u);let m=max,qq=q;for(let i=0;i<9;i++){const s=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext('2d');if(type=='image/jpeg'){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height)}x.drawImage(im,0,0,c.width,c.height);const d=c.toDataURL(type,qq);if(d.length<900000)return ok(d);m*=.8;qq=Math.max(.5,qq-.08)}no(new Error('Image is too large.'))};im.src=u})}
-function media(){const P={heroPhoto:'../img/profile-hero.jpg',aboutPhoto:'../img/profile-about.jpg',logo:'../img/logo.png'};for(const k in P)$('p_'+k).src=imgs[C[k]]||P[k];
-$('cvst').textContent=C.cv?'A custom CV is live on your website.':'Your original CV is live on your website.';
-$('gal').innerHTML=C.gallery.map((g,i)=>`<div class="g"><img src="${esc(g.id?imgs[g.id]||'':'../'+g.src)}" alt=""><div><input data-alt="${i}" maxlength="140" value="${esc(g.alt)}" aria-label="Photo description"><div class="b"><button type="button" class="ghost" data-mv="${i}:-1">Up</button><button type="button" class="ghost" data-mv="${i}:1">Down</button><button type="button" class="ghost" data-rm="${i}">Delete</button></div></div></div>`).join('')||'<p>No photos yet.</p>'}
-async function boot(d){C={heroPhoto:d.heroPhoto||null,aboutPhoto:d.aboutPhoto||null,logo:d.logo||null,cv:d.cv||null,gallery:(d.gallery||ALTS.map((a,i)=>({src:'img/gallery-'+(i+1)+'.jpg',alt:a}))).map(g=>({...g}))};
-await Promise.all([C.heroPhoto,C.aboutPhoto,C.logo,...C.gallery.map(g=>g.id)].map(loadImg));media()}
-document.querySelectorAll('[data-up]').forEach(i=>i.onchange=async()=>{const f=i.files[0],k=i.dataset.up;if(!f)return;try{st('Uploading...');const L=k=='logo',u=await shrink(f,L?600:900,L?'image/png':'image/jpeg',.82),id=await putImg(u),old=C[k];await saveC({[k]:id});C[k]=id;drop(old);media();st('Saved. Your public website now shows the new image.',1)}catch(e){st(emsg(e))}i.value=''});
-$('galAdd').onchange=async e=>{const fs=[...e.target.files];try{for(const f of fs){if(C.gallery.length>=24)throw new Error('Maximum 24 photos.');st('Uploading '+f.name+'...');const id=await putImg(await shrink(f,1000,'image/jpeg',.8));C.gallery.push({id,alt:'Dish photo'});await saveC({gallery:C.gallery});media()}st('Saved. Your gallery is updated.',1)}catch(x){st(emsg(x))}e.target.value=''};
-$('gal').onchange=async e=>{if(e.target.dataset.alt!==undefined){C.gallery[+e.target.dataset.alt].alt=e.target.value.trim();try{await saveC({gallery:C.gallery});st('Saved.',1)}catch(x){st(emsg(x))}}};
-$('gal').onclick=async e=>{const t=e.target;try{if(t.dataset.mv){const[i,n]=t.dataset.mv.split(':').map(Number),j=i+n;if(j<0||j>=C.gallery.length)return;[C.gallery[i],C.gallery[j]]=[C.gallery[j],C.gallery[i]]}else if(t.dataset.rm!==undefined){if(!confirm('Delete this photo?'))return;const[g]=C.gallery.splice(+t.dataset.rm,1);drop(g.id)}else return;await saveC({gallery:C.gallery});media();st('Saved.',1)}catch(x){st(emsg(x))}};
-$('cvIn').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.type!='application/pdf')throw new Error('Please choose a PDF file.');const u=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(new Error('Could not read the file.'));r.readAsDataURL(f)});if(u.length>=900000)throw new Error('This PDF is too big (maximum about 650 KB). Compress it first, for example at ilovepdf.com.');st('Uploading...');const id=await putImg(u),old=C.cv;await saveC({cv:id});C.cv=id;drop(old);media();st('Saved. Your new CV is live.',1)}catch(x){st(emsg(x))}e.target.value=''};
-onAuthStateChanged(auth,async u=>{if(!u)return location.replace('/admin');
-try{await getDoc(doc(db,'admin','ping'))}catch(e){return out('denied')}
-let d={};try{const s=await getDoc(doc(db,'site','content'));if(s.exists())d=s.data()}catch(e){}
-d={...DEFAULTS,...d};await boot(d);F.forEach(k=>$(k).value=d[k]||'');skills=(d.skills||[]).map(s=>({...s}));draw();$('app').hidden=false;
+
+const F=(n,l,h,r,m)=>[n,l,h,r||1,m||120];
+const TABS={
+ Home:{c:'#2f6fdf',k:'HOME SECTION',h:'Home section<br>bodlan',p:'Naam, pesha, hero lekha, button, hero photo ar logo. Change Draft-e jabe, Publish na korle website-e dekha jabe na.',pl:'p1',a:'',f:[F('heroHello','Hero-r prothom chhoto lekha','Jemon: Hello,',1,40),F('heroName','Naam','Jemon: I\'m TAREK',1,60),F('heroTitle','Pesha','Jemon: Professional Chef',1,60),F('heroIntro','Hero-r lekha','Naam-er niche ja dekhay.',3,300),F('heroBtn1','Prothom button-er lekha','Jemon: View My Work',1,30),F('heroBtn2','Ditiyo button-er lekha','Jemon: Contact Me',1,30),F('footer','Footer-er lekha','Website-er shobar niche-r chhoto lekha.',1,160)],ph:[['heroPhoto','Hero photo','Website-er prothom screen-e dekhay.'],['logo','Logo','PNG, jar pichhon swochchho.']]},
+ About:{c:'#d99a00',k:'ABOUT SECTION',h:'About section<br>bodlan',p:'Porichoy, Lokkho, Education, Experience, Specialty ar About photo. Change Draft-e jabe, Publish na korle website-e dekha jabe na.',pl:'p2',a:'#about',f:[F('aboutTag','Chhoto lal lekha','Jemon: About Me',1,40),F('aboutHeadline','About-er shirsho','Chhoto ekta line.',1,120),F('aboutText','About-er lekha','Apnar songkhep porichoy.',5,1200),F('goals','Lokkho','Apni kothay jete chan.',3,500),F('education','Education','Jemon: Diploma in Culinary Arts (ongoing)',1,160),F('experience','Experience','Jemon: Culinary Trainee, Simon\'s Culinary Institute',1,160),F('specialty','Specialty','Kon dhoroner ranna-y apni bhalo. Jemon: Multi-cuisine',1,120)],ph:[['aboutPhoto','About photo','About section-e dekhay.']]},
+ Skills:{c:'#2f9a52',k:'SKILLS SECTION',h:'Skills section<br>bodlan',p:'Section-er lekha ar 6 ti skill card, naam, bornona ar icon. Change Draft-e jabe.',pl:'p3',a:'#skills',f:[F('skillsTag','Chhoto lal lekha','Jemon: Culinary Skills',1,40),F('skillsHeading','Shirsho','Jemon: What I bring to your kitchen',1,100),F('skillsText','Shirsho-r niche-r lekha','Ek-dui line.',2,220)],x:'skills'},
+ Gallery:{c:'#7b4fd0',k:'GALLERY SECTION',h:'Gallery section<br>bodlan',p:'Section-er lekha, dish-er chhobi jora, ager-pichhe kora ar caption. Change Draft-e jabe.',pl:'p4',a:'#gallery',f:[F('galleryTag','Chhoto lal lekha','Jemon: Food Gallery',1,40),F('galleryHeading','Shirsho','Jemon: Dishes I have prepared',1,100),F('galleryText','Shirsho-r niche-r lekha','Ek line.',2,220)],x:'gallery'},
+ Resume:{c:'#0f8f93',k:'RESUME SECTION',h:'Resume section<br>bodlan',p:'Section-er lekha, CV-r button-er lekha ar CV PDF file. Change Draft-e jabe.',pl:'p5',a:'#resume',wide:1,f:[F('resumeTag','Chhoto lal lekha','Jemon: Resume / CV',1,40),F('resumeHeading','Shirsho','Jemon: Want the full picture?',1,100),F('resumeText','Shirsho-r niche-r lekha','Ek-dui line.',2,220),F('cvBtn','CV button-er lekha','Jemon: Download My CV',1,30)],x:'cv'},
+ Contact:{c:'#d6336c',k:'CONTACT SECTION',h:'Contact section<br>bodlan',p:'Section-er lekha, email, social link ar notun message. Change Draft-e jabe, message-er list sathe sathe dekha jay.',pl:'p6',a:'#contact',wide:1,f:[F('contactTag','Chhoto lal lekha','Jemon: Contact',1,40),F('contactHeading','Shirsho','Jemon: Let\'s work together',1,100),F('contactText','Shirsho-r niche-r lekha','Ek-dui line.',2,220),F('email','Email','Contact-e ei email dekhabe.',1,120),F('instagram','Instagram link','https:// diye shuru korun.',1,300),F('facebook','Facebook link','https:// diye shuru korun.',1,300),F('youtube','YouTube link','Khali thakle website-e dekhabe na.',1,300),F('tiktok','TikTok link','Khali thakle website-e dekhabe na.',1,300)],x:'msg'}};
+const MC={Home:'#2f6fdf',About:'#d99a00',Skills:'#2f9a52',Gallery:'#7b4fd0',Resume:'#0f8f93',Contact:'#d6336c'};
+let W={data:{},sections:[]},imgs={},cur='Home',ck='Home',sk=[],gal=[],tmr,pt;
+const D=()=>({...DEFAULTS,...W.data});
+const toast=(m,e)=>{const t=$('tt');t.textContent=m;t.className='on'+(e?' e':'');clearTimeout(t._);t._=setTimeout(()=>t.className='',2200)};
+const emsg=e=>e&&e.code=='permission-denied'?'Not allowed: you are not the admin.':(e&&e.message)||'Kichu ekta bhul hoyeche.';
+const ask=(t,p,y)=>new Promise(ok=>{$('sht').textContent=t;$('shp').textContent=p;$('sy').textContent=y;$('sh').className='on';$('sy').onclick=()=>{$('sh').className='';ok(1)};$('sn').onclick=()=>{$('sh').className='';ok(0)}});
+const mkid=p=>p+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+async function putImg(u){const id=mkid('img');await setDoc(P('site/'+id),{data:u,at:serverTimestamp()});imgs[id]=u;return id}
+async function loadImg(id){if(!id||imgs[id])return;try{const x=await getDoc(P('site/'+id));if(x.exists())imgs[id]=x.data().data}catch(e){}}
+function shrink(f,max,type,q){return new Promise((ok,no)=>{const im=new Image(),u=URL.createObjectURL(f);im.onerror=()=>no(new Error('Eta valid chhobi noy.'));im.onload=()=>{URL.revokeObjectURL(u);let m=max,qq=q;for(let i=0;i<9;i++){const s=Math.min(1,m/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);const x=c.getContext('2d');if(type=='image/jpeg'){x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height)}x.drawImage(im,0,0,c.width,c.height);const d=c.toDataURL(type,qq);if(d.length<900000)return ok(d);m*=.8;qq=Math.max(.5,qq-.08)}no(new Error('Chhobi onek boro.'))};im.src=u})}
+const photo=k=>imgs[D()[k]]||{heroPhoto:'../img/profile-hero.jpg',aboutPhoto:'../img/profile-about.jpg',logo:'../img/logo.png'}[k];
+
+let pend={},psec=new Set();
+function save(patch,sec){Object.assign(pend,patch);psec.add(sec);clearTimeout(tmr);tmr=setTimeout(flush,500);W.data={...W.data,...patch}}
+async function flush(){clearTimeout(tmr);if(!Object.keys(pend).length)return;const p=pend,s=[...psec];pend={};psec=new Set();try{await A.saveDraft(p,s[0]);for(const x of s.slice(1))await A.saveDraft({},x);s.forEach(x=>{if(!W.sections.includes(x))W.sections.push(x)});W.data={...W.data,...p};top2()}catch(e){toast(emsg(e),1)}}
+async function saveNow(patch,sec){await flush();await A.saveDraft(patch,sec);if(!W.sections.includes(sec))W.sections.push(sec);W.data={...W.data,...patch};top2()}
+function top2(){const n=W.sections.length;$('dp').textContent=n?n+' ti change':'Shob live';$('dp').className='dp'+(n?'':' ok');$('pbtn').className='ob'+(n?'':' off');$('hd').hidden=!n;
+document.querySelectorAll('#mn button').forEach(b=>b.classList.toggle('chg',W.sections.includes(b.dataset.t)));clearTimeout(pt);pt=setTimeout(pvLoad,600)}
+function pvLoad(){const f=$('pif');if(!f||cur=='his')return;const T=TABS[cur];if(!T)return;$('pu').textContent='tarek-chef.netlify.app/'+T.a;if(f.dataset.on!='1'){f.dataset.on='1';f.onload=()=>{send();setTimeout(send,500);setTimeout(sc,800);setTimeout(sc,1800)};f.src='/?preview=1'+T.a}else{try{f.contentWindow.location.hash=T.a;f.contentWindow.location.reload()}catch(e){f.src='/?preview=1'+T.a}}}
+const sc=()=>{try{const T=TABS[cur],e=T&&T.a&&$('pif').contentDocument.querySelector(T.a);if(e)e.scrollIntoView()}catch(x){}};
+const send=()=>{try{$('pif').contentWindow.postMessage({tcPreview:1,d:D(),imgs},location.origin)}catch(e){}};
+async function refreshMsg(){let m=[];try{m=await A.messages()}catch(e){}const u=m.filter(x=>!x.read).length;const c=$('nc');if(c){c.hidden=!u;c.textContent=u}
+const l=$('ml');if(l)l.innerHTML=m.length?m.map(x=>`<button class="ms${x.read?'':' u'}" data-m="${x.id}"><b>${esc(x.name)}</b><span>${tm(x.at)}</span><p>${esc(String(x.message).slice(0,90))}</p></button>`).join(''):'<p class="hp">Ekhono kono message ashe ni.</p>';window._M=m}
+const tm=t=>{const d=new Date(t);return isNaN(d)?'':d.toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})};
+async function refreshHist(){let h=[];try{h=await A.history()}catch(e){}$('hs').innerHTML=h.length?h.map(x=>`<div class="row"><b>${tm(x.at)}</b><div class="hp">${esc(x.note||'')}</div><button class="bt" data-r="${x.id}">Ei version-e fire jan</button></div>`).join(''):'<p class="hp">Ekhono kono puraton version nei. Prothom Publish-er por ekhane dekhabe.</p>'}
+function fields(T){return T.f.map(([n,l,h,r,m])=>`<label for="f_${n}">${l}</label><p class="hp">${h}${!D()[n]&&n!='youtube'&&n!='tiktok'?' Khali rakhle website-er ager lekha-i thakbe.':''}</p>${r>1?`<textarea id="f_${n}" data-f="${n}" rows="${r}" maxlength="${m}">`+esc(D()[n]||'')+'</textarea>':`<input id="f_${n}" data-f="${n}" maxlength="${m}" value="${esc(D()[n]||'')}">`}`).join('')}
+function photosH(l){return l.map(([n,t,h])=>`<label>${t}</label><p class="hp">${h}</p><img class="ph" id="ph_${n}" src="${esc(photo(n))}" alt="" style="max-width:220px;border-radius:12px;display:block;margin:6px 0"><input type="file" accept="image/*" data-up="${n}">`).join('')+'<p class="hp" style="margin-top:12px">Boro chhobi dileo nijei chhoto hoye jabe.</p>'}
+function show(k){const T=TABS[k];if(!T)return;flush();ck=k;cur=k;$('bd').hidden=false;$('hv').hidden=true;$('app').style.setProperty('--c',T.c);
+document.querySelectorAll('#mn button').forEach(b=>b.classList.toggle('on',b.dataset.t==k));$('hk').textContent=T.k;$('ht').innerHTML=T.h;$('hpp').textContent=T.p;$('hp1').hidden=false;const pl=$('pl');pl.src='../admin-plate-'+T.pl.slice(1)+'.webp';pl.className='pl'+(T.wide?' wide':'');
+let h=`<h2>${k}-er lekha</h2>`+fields(T);if(T.ph)h+=photosH(T.ph);
+if(T.x=='skills'){sk=(D().skills||[]).map(s=>({...s}));h+='<h3 class="sub">Skill card</h3><div id="skl">'+skillsH()+'</div>'}
+if(T.x=='gallery'){gal=(D().gallery||ALTS.map((a,i)=>({src:'img/gallery-'+(i+1)+'.jpg',alt:a}))).map(g=>({...g}));h+='<h3 class="sub">Chhobi</h3><div id="gl">'+galH()+'</div>'}
+if(T.x=='cv')h+=`<h3 class="sub">CV file</h3><p class="hp">${D().cv?'Notun CV live-er jonno prostut.':'Ager CV ekhon website-e ache.'}</p><label for="cvi">Notun CV (PDF)</label><p class="hp">Maximum prai 650 KB.</p><input type="file" id="cvi" accept="application/pdf">`;
+if(T.x=='msg')h+='<h3 class="sub">Message</h3><div id="ml"></div>';
+$('se').innerHTML=h;if(T.x=='msg')refreshMsg();scrollTo(0,0);pvLoad()}
+function showHist(){cur='his';$('bd').hidden=true;$('hv').hidden=false;document.querySelectorAll('#mn button').forEach(b=>b.classList.remove('on'));$('hk').textContent='HISTORY';$('ht').innerHTML='Puraton version<br>fire jan';$('hpp').textContent='Publish-er age-r live version gulo. Bhul hole 1 tap-e fire jan.';$('hp1').hidden=true;$('pl').src='../admin-plate-4.webp';$('pl').className='pl';scrollTo(0,0);refreshHist()}
+function skillsH(){return sk.map((s,i)=>`<div class="row" data-i="${i}"><label>Icon</label><select data-k="icon">${Object.keys(ICONS).map(k=>`<option ${k==s.icon?'selected':''}>${k}</option>`).join('')}</select><label>Naam</label><input data-k="title" maxlength="60" value="${esc(s.title)}"><label>Bornona</label><textarea data-k="text" rows="2" maxlength="220">${esc(s.text)}</textarea><div class="x"><button class="bt" data-del="${i}">Mushe din</button></div></div>`).join('')+(sk.length<6?'<button class="bt k" id="ska">+ Notun skill</button>':'<p class="hp">Maximum 6 ti skill.</p>')}
+function galH(){return gal.map((g,i)=>`<div class="row gi"><img src="${esc(g.id?imgs[g.id]||'':'../'+g.src)}" alt=""><div><input data-alt="${i}" maxlength="140" value="${esc(g.alt)}" aria-label="Chhobir bornona"><div class="x"><button class="bt" data-mv="${i}:-1">Upore</button><button class="bt" data-mv="${i}:1">Niche</button><button class="bt" data-rm="${i}">Mushe din</button></div></div></div>`).join('')+'<label for="gadd">Notun chhobi dien</label><p class="hp">Boro chhobi nijei chhoto hobe. Maximum 24 ti.</p><input type="file" id="gadd" accept="image/*" multiple>'}
+$('se').addEventListener('input',e=>{const t=e.target;if(t.dataset.f)save({[t.dataset.f]:t.value.trim()},ck);else if(t.dataset.k&&t.closest('[data-i]')){sk[+t.closest('[data-i]').dataset.i][t.dataset.k]=t.value;save({skills:sk.filter(s=>s.title.trim()).map(s=>({icon:s.icon,title:s.title.trim(),text:s.text.trim()}))},'Skills')}else if(t.dataset.alt!==undefined){gal[+t.dataset.alt].alt=t.value.trim();save({gallery:gal},'Gallery')}});
+$('se').addEventListener('click',async e=>{const t=e.target;try{if(t.id=='ska'){sk.push({icon:'leaf',title:'',text:''});$('skl').innerHTML=skillsH()}else if(t.dataset.del!==undefined){if(await ask('Skill mushben?','Eta draft theke jabe, Publish-er age live-e kichu bodlabe na.','Mushe din')){sk.splice(+t.dataset.del,1);$('skl').innerHTML=skillsH();await saveNow({skills:sk.filter(s=>s.title.trim()).map(s=>({icon:s.icon,title:s.title.trim(),text:s.text.trim()}))},'Skills')}}
+else if(t.dataset.mv){const[i,n]=t.dataset.mv.split(':').map(Number),j=i+n;if(j<0||j>=gal.length)return;[gal[i],gal[j]]=[gal[j],gal[i]];await saveNow({gallery:gal},'Gallery');$('gl').innerHTML=galH()}
+else if(t.dataset.rm!==undefined){if(await ask('Chhobi mushben?','Eta draft theke jabe. Puraton version-e fire gele abar pawa jabe.','Mushe din')){gal.splice(+t.dataset.rm,1);await saveNow({gallery:gal},'Gallery');$('gl').innerHTML=galH()}}}catch(x){toast(emsg(x),1)}});
+$('se').addEventListener('change',async e=>{const t=e.target,f=t.files&&t.files[0];try{if(t.dataset.up&&f){const L=t.dataset.up=='logo';toast('Upload hochhe...');const id=await putImg(await shrink(f,L?600:900,L?'image/png':'image/jpeg',.82));await saveNow({[t.dataset.up]:id},ck);$('ph_'+t.dataset.up).src=imgs[id];toast('Draft-e save hoyeche')}
+else if(t.id=='gadd'){for(const g of t.files){if(gal.length>=24)throw new Error('Maximum 24 ti chhobi.');gal.push({id:await putImg(await shrink(g,1000,'image/jpeg',.8)),alt:'Dish photo'})}await saveNow({gallery:gal},'Gallery');$('gl').innerHTML=galH();toast('Draft-e save hoyeche')}
+else if(t.id=='cvi'&&f){if(f.type!='application/pdf')throw new Error('PDF file bachun.');const u=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>no(new Error('File poRa gelo na.'));r.readAsDataURL(f)});if(u.length>=900000)throw new Error('PDF ti boro (maximum prai 650 KB). Age chhoto korun.');await saveNow({cv:await putImg(u)},ck);toast('Draft-e save hoyeche')}}catch(x){toast(emsg(x),1)}t.value=''});
+
+document.addEventListener('click',async e=>{const t=e.target.closest('button');if(!t)return;
+if(t.dataset.t&&t.closest('#mn'))show(t.dataset.t);
+else if(t.dataset.m){const m=window._M.find(x=>x.id==t.dataset.m);if(!m)return;$('ml').innerHTML=`<button class="bk" id="mb">&larr; Message-e fire jan</button><div class="row"><b>${esc(m.name)}</b><div class="hp">${esc(m.email)} &middot; ${tm(m.at)}</div><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(m.message)}</p><div class="x"><a class="bt r" href="mailto:${esc(m.email)}">Reply</a><button class="bt" data-dm="${m.id}">Mushe din</button></div></div>`;if(!m.read)A.markRead(m.id).catch(()=>{})}
+else if(t.id=='mb')refreshMsg();else if(t.dataset.dm){if(await ask('Message mushben?','Eta ar fire pawa jabe na.','Mushe din')){await A.removeMsg(t.dataset.dm).catch(x=>toast(emsg(x),1));refreshMsg()}}
+else if(t.dataset.r){if(await ask('Ei version-e fire jaben?','Website ei version-e fire jabe. Ajker version-o History-te jomano thakbe.','Fire jan')){try{await A.restore(t.dataset.r);W=await A.working();top2();refreshHist();toast('Fire gechhi')}catch(x){toast(emsg(x),1)}}}});
+$('hb').onclick=showHist;$('pbtn').onclick=pub;$('hp1').onclick=prev;$('hd').onclick=disc;
+async function pub(){await flush();if(!W.sections.length)return;if(await ask('Website-e live korben?','Visitor-ra '+W.sections.length+' ti jaygar notun change dekhbe. Ager version History-te jomano thakbe, bhul hole fire jete parben.','Publish')){try{await A.publish(W.sections.join(', '));W=await A.working();top2();toast('Published')}catch(x){toast(emsg(x),1)}}}
+async function disc(){if(await ask('Draft bad dibe?','Shob na-publish kora change muche jabe, website jemon ache temon thakbe.','Discard')){try{await A.discard();W=await A.working();top2();toast('Discarded')}catch(x){toast(emsg(x),1)}}}
+function prev(){let o=document.getElementById('pvw');if(o)o.remove();o=document.createElement('div');o.id='pvw';o.style.cssText='position:fixed;inset:0;z-index:20;background:#e8e8e8;display:flex;flex-direction:column';
+o.innerHTML='<div style="display:flex;gap:8px;align-items:center;padding:10px 12px;padding-top:calc(10px + env(safe-area-inset-top))"><button class="bt" id="pvx">&larr; Fire jan</button><b style="flex:1;text-align:center">Preview</b><button class="bt k" id="pvp">Phone</button><button class="bt" id="pvd">Desktop</button></div><div style="flex:1;display:flex;justify-content:center;min-height:0"><iframe id="pvf" title="Preview" src="/?preview=1" style="border:0;background:#fff;width:390px;max-width:100%;height:100%"></iframe></div>';document.body.append(o);
+const f=document.getElementById('pvf'),send=()=>{try{f.contentWindow.postMessage({tcPreview:1,d:D(),imgs},location.origin)}catch(e){}};f.onload=()=>{send();setTimeout(send,500)};
+document.getElementById('pvx').onclick=()=>o.remove();const pp=document.getElementById('pvp'),pd=document.getElementById('pvd');
+pp.onclick=()=>{f.style.width='390px';pp.className='bt k';pd.className='bt'};pd.onclick=()=>{f.style.width='100%';pd.className='bt k';pp.className='bt'}}
+
+const out=async m=>{try{await signOut(auth)}catch(e){}location.replace('/admin'+(m?'?m='+m:''))};$('out').onclick=()=>out();
+$('mn').innerHTML=Object.keys(TABS).map(k=>`<button data-t="${k}" style="--m:${MC[k]}">${k}${k=='Contact'?'<i id="nc" hidden></i>':''}</button>`).join('');
+onAuthStateChanged(auth,async u=>{if(!u)return location.replace('/admin');try{await getDoc(P('admin/ping'))}catch(e){return out('denied')}
+try{W=await A.working()}catch(e){}await Promise.all(['heroPhoto','aboutPhoto','logo'].map(k=>loadImg(D()[k])));
+(D().gallery||[]).forEach(g=>loadImg(g.id));$('app').hidden=false;show('Home');top2();refreshMsg();
 let t;const idle=()=>{clearTimeout(t);t=setTimeout(()=>out('idle'),1800000)};['click','keydown','touchstart'].forEach(v=>addEventListener(v,idle));idle()});
-$('out').onclick=()=>out();
-$('save').onclick=async()=>{const st=$('st'),d={};F.forEach(k=>d[k]=$(k).value.trim());st.className='';
-if(d.email&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email))return st.textContent='Please enter a valid email.';
-for(const k of ['instagram','facebook'])if(d[k]&&!/^https:\/\//i.test(d[k]))return st.textContent='Links must start with https://';
-d.skills=skills.filter(s=>s.title.trim()).map(s=>({icon:s.icon,title:s.title.trim(),text:s.text.trim()}));d.updatedAt=serverTimestamp();
-try{await setDoc(doc(db,'site','content'),d,{merge:true});st.className='ok';st.textContent='Saved. Your public website now shows these changes.'}catch(e){st.textContent=e.code=='permission-denied'?'Not allowed: you are not the admin.':'Could not save. Check your connection and try again.'}};</script></body></html>
+</script>
+</body></html>
